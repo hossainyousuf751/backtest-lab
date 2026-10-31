@@ -8,7 +8,6 @@ versions follow [semantic versioning](https://semver.org/).
 ### Added
 
 - `CONTRIBUTING.md`, `CLAUDE.md`, PR template and this changelog.
-
 - `factor_attribution` reports the number of observations in `.attrs["n_obs"]`.
 - CI tests Python 3.13 and the oldest supported numpy/pandas/scipy.
 
