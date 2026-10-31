@@ -5,6 +5,10 @@ versions follow [semantic versioning](https://semver.org/).
 
 ## Unreleased
 
+## 0.3.1 - 2026-11-01
+
+Release-process changes only: the library code is identical to 0.3.0.
+
 ### Changed
 
 - Releases are automatic: merging a version bump to `main` creates the tag and GitHub release
