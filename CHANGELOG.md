@@ -5,6 +5,15 @@ versions follow [semantic versioning](https://semver.org/).
 
 ## Unreleased
 
+### Added
+
+- `publish` workflow: a published GitHub release uploads the package to PyPI (trusted publishing).
+
+### Changed
+
+- License metadata uses the SPDX form (`license = "MIT"`); requires setuptools>=77 to build.
+- README chart links are absolute so they also render on PyPI.
+
 ## 0.3.0 - 2026-11-01
 
 ### Added
