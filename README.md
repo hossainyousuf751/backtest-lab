@@ -180,6 +180,11 @@ A real-data single-stock study remains out of scope: free sources such as Yahoo 
 delisted tickers, so it needs a survivorship-free database (e.g. CRSP or Norgate) plus
 historical index membership.
 
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for the project's invariants, roles, workflow and
+testing rules, and [CHANGELOG.md](CHANGELOG.md) for what changed between versions.
+
 ## References
 
 - Bailey, D. & López de Prado, M. (2012). The Sharpe Ratio Efficient Frontier. *Journal of Risk* 15(2).
