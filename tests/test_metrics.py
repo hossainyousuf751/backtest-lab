@@ -4,7 +4,7 @@ import pytest
 
 from btlab import (
     bootstrap_sharpe_ci, deflated_sharpe, expected_max_sharpe, factor_attribution, max_drawdown,
-    probabilistic_sharpe, sharpe,
+    probabilistic_sharpe, sharpe, summary,
 )
 
 
@@ -52,3 +52,36 @@ def test_bootstrap_ci_covers_point_estimate():
     r = np.random.default_rng(2).normal(0.0004, 0.01, 2520)
     lo, hi = bootstrap_sharpe_ci(r, n_boot=500)
     assert lo < sharpe(r) < hi
+
+
+def test_max_drawdown_counts_a_first_day_loss():
+    assert max_drawdown([-0.5]) == pytest.approx(-0.5)
+    assert max_drawdown([-0.1, -0.1]) == pytest.approx(-0.19)
+
+
+def test_summary_of_a_strategy_that_never_trades():
+    out = summary(pd.Series(0.0, pd.bdate_range("2020-01-01", periods=300)))
+    assert np.isnan(out["sharpe"]) and all(np.isnan(out["sharpe_ci95"]))
+
+
+def test_annual_turnover_ignores_the_warm_up():
+    idx = pd.bdate_range("2010-01-01", periods=2 * 252 + 1)
+    r = pd.Series(0.0, idx)
+    r.iloc[252:] = 0.001                                     # invested only in the second year
+    turnover = pd.Series(1.0, idx[252:504:21])                  # 1x per month while invested
+    assert summary(r, turnover)["annual_turnover"] == pytest.approx(12, rel=0.05)
+
+
+def test_sharpe_of_a_constant_series_is_undefined():
+    assert np.isnan(sharpe(np.full(100, 0.001)))
+
+
+def test_factor_attribution_warm_up_ignores_later_nans():
+    idx = pd.bdate_range("2010-01-01", periods=600)
+    rng = np.random.default_rng(5)
+    f = pd.DataFrame({"mkt": rng.normal(0, 0.01, 600)}, idx)
+    r = pd.Series(0.5 * f["mkt"].to_numpy(), idx)
+    r.iloc[:50] = 0.0
+    r.iloc[300] = np.nan
+    t = factor_attribution(r, f)
+    assert t.attrs["n_obs"] == 549 and t.attrs["r2"] == pytest.approx(1.0)   # rows 50..599 minus the NaN

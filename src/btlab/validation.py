@@ -20,16 +20,18 @@ def check_lookahead(strategy: Strategy, prices: pd.DataFrame, n_cutoffs: int = 5
     """Truncation test: weights up to date c must not change when data after c is removed.
 
     Returns (passed, max_abs_difference). Any difference means the strategy
-    used information from the future.
+    used information from the future. A weight that is NaN in one run but
+    not the other (typical of a `shift(-1)` peek) counts as infinite.
     """
     rng = np.random.default_rng(seed)
     full = strategy.weights(prices)
     worst = 0.0
     lo = len(prices) // 4
     for c in sorted(rng.integers(lo, len(prices) - 1, n_cutoffs)):
-        trunc = strategy.weights(prices.iloc[:c + 1])
-        diff = (full.iloc[:c + 1] - trunc).abs().to_numpy()
-        worst = max(worst, float(np.nanmax(diff)) if np.isfinite(diff).any() else 0.0)
+        a = full.iloc[:c + 1].to_numpy(dtype=float)
+        b = strategy.weights(prices.iloc[:c + 1]).reindex_like(full.iloc[:c + 1]).to_numpy(dtype=float)
+        diff = np.where(np.isnan(a) != np.isnan(b), np.inf, np.abs(a - b))
+        worst = max(worst, float(np.nanmax(diff, initial=0.0)))
     return worst <= tol, worst
 
 
@@ -87,6 +89,9 @@ def walk_forward(prices: pd.DataFrame, strategy_cls: type[Strategy], param_grid:
             "is_sharpe": scores[best],
         })
         train_end = test_end
+    if not folds:
+        raise ValueError(f"no test window: {len(R) - start} trading days after warm-up, "
+                         f"train_days={train_days}")
 
     folds = pd.DataFrame(folds)
     oos = run_backtest(prices, stitched, **backtest_kwargs).returns.loc[folds["test_start"].iloc[0]:]
@@ -146,6 +151,8 @@ def effective_trials(trial_returns: pd.DataFrame, min_corr: float = 0.5) -> int:
     multiple-testing correction. Average-linkage hierarchical clustering on
     the distance sqrt((1 - corr) / 2).
     """
+    if trial_returns.shape[1] < 2:
+        return trial_returns.shape[1]
     corr = _trim_warmup(trial_returns).corr().fillna(0.0).to_numpy()
     dist = np.sqrt(np.clip(0.5 * (1 - corr), 0, None))
     np.fill_diagonal(dist, 0.0)

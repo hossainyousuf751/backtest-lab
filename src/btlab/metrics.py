@@ -28,11 +28,14 @@ def _trim_leading_zeros(r) -> np.ndarray:
 def sharpe(r, periods: int = PERIODS) -> float:
     r = _trim_leading_zeros(r)
     sd = r.std(ddof=1) if len(r) > 1 else 0.0
-    return float(r.mean() / sd * np.sqrt(periods)) if sd > 0 else float("nan")
+    # a constant series has sd 0 up to rounding error: treat that as undefined, not huge
+    return float(r.mean() / sd * np.sqrt(periods)) if sd > 0 and sd > 1e-9 * abs(r.mean()) else float("nan")
 
 
 def sortino(r, periods: int = PERIODS) -> float:
     r = _trim_leading_zeros(r)
+    if not len(r):
+        return float("nan")
     downside = np.sqrt(np.mean(np.minimum(r, 0.0) ** 2))
     return float(r.mean() / downside * np.sqrt(periods)) if downside > 0 else float("nan")
 
@@ -43,12 +46,13 @@ def annual_return(r, periods: int = PERIODS) -> float:
 
 
 def annual_vol(r, periods: int = PERIODS) -> float:
-    return float(_trim_leading_zeros(r).std(ddof=1) * np.sqrt(periods))
+    r = _trim_leading_zeros(r)
+    return float(r.std(ddof=1) * np.sqrt(periods)) if len(r) > 1 else float("nan")
 
 
 def max_drawdown(r) -> float:
-    equity = np.cumprod(1 + _clean(r))
-    return float(np.min(equity / np.maximum.accumulate(equity) - 1)) if len(equity) else 0.0
+    equity = np.concatenate([[1.0], np.cumprod(1 + _clean(r))])   # the peak starts at 1, not day 1
+    return float(np.min(equity / np.maximum.accumulate(equity) - 1))
 
 
 def probabilistic_sharpe(r, sr_benchmark: float = 0.0, periods: int = PERIODS) -> float:
@@ -59,6 +63,8 @@ def probabilistic_sharpe(r, sr_benchmark: float = 0.0, periods: int = PERIODS) -
     """
     r = _trim_leading_zeros(r)
     n = len(r)
+    if np.isnan(sharpe(r)):                                 # empty or constant: undefined
+        return float("nan")
     sr = r.mean() / r.std(ddof=1)
     sr_b = sr_benchmark / np.sqrt(periods)
     skew, kurt = stats.skew(r), stats.kurtosis(r, fisher=False)
@@ -98,6 +104,8 @@ def bootstrap_sharpe_ci(r, n_boot: int = 2000, mean_block: int = 20, alpha: floa
     """
     r = _trim_leading_zeros(r)
     n = len(r)
+    if n < 2:
+        return float("nan"), float("nan")
     rng = np.random.default_rng(seed)
     starts = rng.integers(0, n, (n_boot, n))
     new_block = rng.random((n_boot, n)) < 1 / mean_block
@@ -118,9 +126,11 @@ def factor_attribution(r: pd.Series, factors: pd.DataFrame, periods: int = PERIO
     are autocorrelated and heteroskedastic. `r` should be an excess return
     (subtract the risk-free rate unless the strategy is self-financing, e.g.
     long-short). Returns a table of coef and t_stat for alpha (annualised)
-    and each factor loading; R-squared is in `.attrs["r2"]`.
+    and each factor loading; R-squared and the number of observations are in
+    `.attrs["r2"]` and `.attrs["n_obs"]`.
     """
-    r = pd.Series(r).iloc[len(r) - len(_trim_leading_zeros(r)):]   # skip the warm-up
+    r = pd.Series(r)
+    r = r.iloc[int(r.ne(0).to_numpy().argmax()):]                    # skip the warm-up
     df = pd.concat([r.rename("_r"), factors], axis=1, join="inner").dropna()
     y = df.pop("_r").to_numpy()
     X = np.column_stack([np.ones(len(df)), df.to_numpy()])
@@ -140,6 +150,7 @@ def factor_attribution(r: pd.Series, factors: pd.DataFrame, periods: int = PERIO
     out = pd.DataFrame({"coef": coef, "t_stat": coef / se}, index=["alpha"] + list(df.columns))
     out.loc["alpha", "coef"] *= periods
     out.attrs["r2"] = float(1 - resid.var() / y.var())
+    out.attrs["n_obs"] = n
     return out
 
 
@@ -153,8 +164,8 @@ def summary(r, turnover: pd.Series | None = None, periods: int = PERIODS) -> dic
         "psr_vs_0": probabilistic_sharpe(r, 0.0, periods),
         "sharpe_ci95": bootstrap_sharpe_ci(r, periods=periods),
     }
-    if turnover is not None and len(turnover):
-        r_index = r.index if isinstance(r, pd.Series) else None
-        years = (r_index[-1] - r_index[0]).days / 365.25 if r_index is not None else np.nan
-        out["annual_turnover"] = float(turnover.sum() / years) if years else float("nan")
+    traded = turnover[turnover > 0] if turnover is not None else []
+    if len(traded) and isinstance(r, pd.Series):
+        years = (r.index[-1] - traded.index[0]).days / 365.25   # from the first trade, not the warm-up
+        out["annual_turnover"] = float(traded.sum() / years) if years > 0 else float("nan")
     return out
