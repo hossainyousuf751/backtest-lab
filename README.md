@@ -69,7 +69,7 @@ first good result would), a search over 45 momentum configurations finds:
 | Walk-forward out-of-sample Sharpe | 0.82 | **fooled**: the whole sample is lucky, not just the selection |
 | Chosen config on 20 fresh noise markets | +0.00 | the truth |
 
-![Trial Sharpes](docs/overfitting_trials.png)
+![Trial Sharpes](https://raw.githubusercontent.com/hossainyousuf751/backtest-lab/main/docs/overfitting_trials.png)
 
 The lesson is that every in-sample defence (DSR, PBO, walk-forward) protects against
 *selection* bias but not against a lucky *sample*. Only independent data (other markets,
@@ -96,7 +96,7 @@ The bias is large for strategies that would have held the failures, and nearly a
 momentum, which sells declining firms before they delist. The engine handles this correctly:
 assets cannot be bought before listing, and delisted holdings become cash.
 
-![Survivorship](docs/survivorship.png)
+![Survivorship](https://raw.githubusercontent.com/hossainyousuf751/backtest-lab/main/docs/survivorship.png)
 
 ## Study 3: a genuine signal, and what costs leave of it
 
@@ -122,7 +122,7 @@ The remaining question is economic. At ~6.4× annual turnover, net Sharpe falls 
 gross to 0.79 at 30 bps and 0.58 at 50 bps. Borrowing the short leg costs more: a 50 bps/yr
 general-collateral fee takes Sharpe from 1.06 to 1.01, and a 300 bps/yr hard-to-borrow fee takes it to 0.80.
 
-![Cost sensitivity](docs/planted_costs.png)
+![Cost sensitivity](https://raw.githubusercontent.com/hossainyousuf751/backtest-lab/main/docs/planted_costs.png)
 
 ## Study 4: real data
 
@@ -144,7 +144,7 @@ is gone by 20 bps. Regressed on the Fama-French factors plus momentum:
 R² is 0.58. Sector momentum is not a new strategy: it is a weak, diluted copy of the stock-level
 momentum factor, which you could hold directly.
 
-![Sector momentum](docs/live_sector_momentum.png)
+![Sector momentum](https://raw.githubusercontent.com/hossainyousuf751/backtest-lab/main/docs/live_sector_momentum.png)
 
 ## Study 5: capacity
 
@@ -165,7 +165,7 @@ gives up a little at small size but roughly doubles capacity. The square-root la
 calibrated for trades below about 10–20% of daily volume, so the far right of the curve
 (where trades exceed ADV) is indicative only.
 
-![Capacity](docs/capacity.png)
+![Capacity](https://raw.githubusercontent.com/hossainyousuf751/backtest-lab/main/docs/capacity.png)
 
 ## Roadmap
 

@@ -9,6 +9,7 @@ versions follow [semantic versioning](https://semver.org/).
 
 ### Added
 
+- `publish` workflow: a published GitHub release uploads the package to PyPI (trusted publishing).
 - `CONTRIBUTING.md`, `CLAUDE.md`, PR template and this changelog.
 - `factor_attribution` reports the number of observations in `.attrs["n_obs"]`.
 - CI tests Python 3.13 and the oldest supported numpy/pandas/scipy.
@@ -21,6 +22,8 @@ versions follow [semantic versioning](https://semver.org/).
 - `rebalance_dates` / `run_backtest` reject unknown schedules (e.g. `"Q"`) instead of
   silently rebalancing monthly.
 - `walk_forward` raises a clear `ValueError` when the history is too short for one test window.
+- License metadata uses the SPDX form (`license = "MIT"`); requires setuptools>=77 to build.
+- README chart links are absolute so they also render on PyPI.
 
 ### Fixed
 
