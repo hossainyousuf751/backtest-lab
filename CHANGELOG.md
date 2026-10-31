@@ -5,6 +5,8 @@ versions follow [semantic versioning](https://semver.org/).
 
 ## Unreleased
 
+## 0.3.0 - 2026-11-01
+
 ### Added
 
 - `CONTRIBUTING.md`, `CLAUDE.md`, PR template and this changelog.
