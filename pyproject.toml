@@ -1,0 +1,26 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "btlab"
+version = "0.2.0"
+description = "A backtesting framework built around avoiding the common ways backtests lie"
+readme = "README.md"
+requires-python = ">=3.10"
+license = {text = "MIT"}
+dependencies = ["numpy>=1.24", "scipy>=1.10", "pandas>=2.0"]
+
+[project.urls]
+Repository = "https://github.com/hossainyousuf751/backtest-lab"
+
+[project.optional-dependencies]
+plot = ["matplotlib>=3.7"]
+data = ["yfinance>=0.2"]
+dev = ["pytest>=7", "matplotlib>=3.7"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
