@@ -5,6 +5,12 @@ versions follow [semantic versioning](https://semver.org/).
 
 ## Unreleased
 
+### Changed
+
+- Releases are automatic: merging a version bump to `main` creates the tag and GitHub release
+  (notes from this changelog, package files attached) and uploads to PyPI.
+- The documented release steps work in PowerShell as well as bash.
+
 ## 0.3.0 - 2026-11-01
 
 ### Added
