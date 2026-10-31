@@ -95,11 +95,14 @@ Module responsibilities (what each module guarantees to the others):
 - `CHANGELOG.md` gets an entry under `Unreleased` in every PR that changes behaviour.
 - Versions follow semantic versioning in `pyproject.toml`. Releasing is done by the maintainer:
   1. PR that moves `Unreleased` to `## X.Y.Z - date` and bumps `version` in `pyproject.toml`; merge it.
-  2. Publish a GitHub release tagged `vX.Y.Z` on `main` with that changelog section as notes:
+  2. Publish a GitHub release tagged `vX.Y.Z` on `main` with that changelog section as notes
+     (works in PowerShell and bash; replace `X.Y.Z` in all three places, then delete `notes.md`):
+
      ```bash
-     awk '/^## X.Y.Z/{f=1;next} /^## /{f=0} f' CHANGELOG.md > notes.md
+     python -c "s=open('CHANGELOG.md',encoding='utf-8').read(); open('notes.md','w',encoding='utf-8').write(s.split('## X.Y.Z')[1].split('\n## ')[0].split('\n',1)[1])"
      gh release create vX.Y.Z --target main --title "btlab X.Y.Z" --notes-file notes.md --latest
      ```
+
   3. The `publish` workflow builds the package and uploads it to PyPI. It refuses a tag that
      does not match the version in `pyproject.toml`. PyPI versions cannot be re-uploaded, so a
      mistake means a new patch version.
