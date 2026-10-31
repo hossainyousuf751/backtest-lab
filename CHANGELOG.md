@@ -10,6 +10,8 @@ versions follow [semantic versioning](https://semver.org/).
 - `CONTRIBUTING.md`, `CLAUDE.md`, PR template and this changelog.
 - `factor_attribution` reports the number of observations in `.attrs["n_obs"]`.
 - CI tests Python 3.13 and the oldest supported numpy/pandas/scipy.
+- Test that `walk_forward` never selects a configuration whose edge only appears after the
+  training window (fails if selection is scored on test data).
 
 ### Changed
 

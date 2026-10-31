@@ -109,3 +109,24 @@ def test_short_inputs_fail_clearly():
     with pytest.raises(ValueError, match="no test window"):
         walk_forward(PRICES, CrossSectionalMomentum, [{}], train_days=5000)
     assert effective_trials(_noise_trials(n_trials=1)) == 1
+
+
+@dataclass(frozen=True)
+class HoldOne(Strategy):
+    target: str = "A"
+
+    def weights(self, prices):
+        return pd.DataFrame({c: float(c == self.target) for c in prices.columns}, index=prices.index)
+
+
+def test_walk_forward_never_selects_a_config_that_only_shines_later():
+    """B loses steadily, then surges after day 900: best in hindsight, never best in time."""
+    rng = np.random.default_rng(7)
+    n = 4 * 252
+    a = 0.0005 + rng.normal(0, 0.005, n)
+    b = np.where(np.arange(n) < 900, -0.0005, 0.01) + rng.normal(0, 0.005, n)
+    prices = 100 * pd.DataFrame({"A": 1 + a, "B": 1 + b}, index=pd.bdate_range("2015-01-01", periods=n)).cumprod()
+    grid = [{"target": "A"}, {"target": "B"}]
+    wf = walk_forward(prices, HoldOne, grid, train_days=504, test_days=252, cost_bps=0)
+    assert wf.best_in_sample == 1                        # the trap is real: B wins with hindsight
+    assert len(wf.folds) == 2 and (wf.folds["chosen"] == 0).all()   # but is never chosen in time
