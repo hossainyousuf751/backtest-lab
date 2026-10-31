@@ -118,7 +118,7 @@ Factor attribution against the market (equal-weight index) separates the edge fr
 
 The long-only version earns 16%/yr in raw terms, but most of that is beta.
 
-The remaining question is economic. At ~5.9× annual turnover, net Sharpe falls from 1.11
+The remaining question is economic. At ~6.4× annual turnover, net Sharpe falls from 1.11
 gross to 0.79 at 30 bps and 0.58 at 50 bps. Borrowing the short leg costs more: a 50 bps/yr
 general-collateral fee takes Sharpe from 1.06 to 1.01, and a 300 bps/yr hard-to-borrow fee takes it to 0.80.
 

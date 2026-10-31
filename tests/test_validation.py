@@ -89,3 +89,23 @@ def test_effective_trials_counts_clusters_of_correlated_configs():
     cols = {f"{k}{i}": base[:, k] + rng.normal(0, 0.003, 1500) for k in range(3) for i in range(10)}
     assert effective_trials(pd.DataFrame(cols)) == 3
     assert effective_trials(_noise_trials(n_trials=12)) == 12
+
+
+@dataclass(frozen=True)
+class SignPeekingStrategy(Strategy):
+    """Cheats via shift(-1) and keeps the NaN it leaves on the last row."""
+
+    def weights(self, prices):
+        tomorrow = prices.pct_change(fill_method=None).shift(-1)
+        return np.sign(tomorrow).div(prices.notna().sum(axis=1), axis=0)
+
+
+def test_peek_that_leaves_nan_is_caught():
+    passed, diff = check_lookahead(SignPeekingStrategy(), PRICES)
+    assert not passed and diff == np.inf
+
+
+def test_short_inputs_fail_clearly():
+    with pytest.raises(ValueError, match="no test window"):
+        walk_forward(PRICES, CrossSectionalMomentum, [{}], train_days=5000)
+    assert effective_trials(_noise_trials(n_trials=1)) == 1

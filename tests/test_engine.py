@@ -108,3 +108,26 @@ def test_point_in_time_universe_recipe():
     assert (res.returns.iloc[31:] == 0).all()                        # then sold: all in B
     wrong = run_backtest(view, w, rebalance="D", cost_bps=0, execution_lag=0, delisting_return=-1)
     assert wrong.returns.iloc[30] < -0.4                             # masked prices = fake delisting
+
+
+def test_return_across_a_halt_is_booked_when_trading_resumes():
+    idx = pd.bdate_range("2020-01-01", periods=5)
+    p = pd.DataFrame({"A": [100, 101, np.nan, np.nan, 150.0]}, idx)
+    assert asset_returns(p)["A"].tolist() == pytest.approx([0, 0.01, 0, 0, 150 / 101 - 1])
+    res = run_backtest(p, pd.DataFrame({"A": 1.0}, idx), rebalance="D", cost_bps=0, execution_lag=0)
+    assert (1 + res.returns).prod() == pytest.approx(1.5)   # held through the halt, not cashed out
+
+
+def test_unknown_rebalance_schedule_is_rejected():
+    with pytest.raises(ValueError):
+        rebalance_dates(IDX, "Q")
+
+
+def test_impact_uses_only_volume_known_before_the_trade():
+    rng = np.random.default_rng(6)
+    p = prices_from_returns({"A": rng.normal(0, 0.01, 60)})
+    w = pd.DataFrame({"A": 1.0}, index=IDX)
+    dv = pd.DataFrame({"A": 1e7}, index=IDX)
+    base = run_backtest(p, w, cost_bps=0, dollar_volume=dv).costs
+    dv.iloc[base.ne(0).to_numpy().argmax()] = 1e12        # huge volume on the trade day itself
+    assert run_backtest(p, w, cost_bps=0, dollar_volume=dv).costs.equals(base)

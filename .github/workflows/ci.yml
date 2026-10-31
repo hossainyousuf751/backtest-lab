@@ -9,7 +9,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: ["3.10", "3.11", "3.12"]
+        python-version: ["3.10", "3.11", "3.12", "3.13"]
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-python@v7
@@ -24,3 +24,15 @@ jobs:
           python 02_survivorship.py
           python 03_planted_signal.py
           python 05_capacity.py
+
+  oldest-supported:
+    # the lower bounds declared in pyproject.toml must actually work
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.10"
+      - run: pip install "numpy==1.24.*" "pandas==2.0.*" "scipy==1.10.*" "matplotlib==3.7.*" "pytest==7.*"
+      - run: pip install --no-deps -e .
+      - run: pytest -q
