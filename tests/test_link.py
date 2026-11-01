@@ -52,8 +52,8 @@ def test_periods_per_year_flows_into_summary():
     s = res.summary()
     assert s["sharpe"] == pytest.approx(metrics.sharpe(res.returns, 52), rel=1e-15)
     assert s["annual_vol"] == pytest.approx(metrics.annual_vol(res.returns, 52), rel=1e-15)
-    assert run_backtest(PRICES, WEIGHTS).summary() == pytest.approx(metrics.summary(
-        run_backtest(PRICES, WEIGHTS).returns, run_backtest(PRICES, WEIGHTS).turnover), rel=0)
+    daily = run_backtest(PRICES, WEIGHTS)                  # the default is today's 252-day summary, exactly
+    assert daily.summary() == metrics.summary(daily.returns, daily.turnover)
 
 
 def test_vol_estimator_default_is_the_rolling_std():
