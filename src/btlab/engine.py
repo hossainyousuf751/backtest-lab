@@ -8,6 +8,7 @@ import numpy as np
 import pandas as pd
 
 from btlab import metrics
+from btlab.costs import CostModel
 
 
 def rebalance_dates(index: pd.DatetimeIndex, schedule: str | int = "M") -> pd.DatetimeIndex:
@@ -51,20 +52,22 @@ class BacktestResult:
     costs: pd.Series            # cost charged each day (fraction of NAV)
     turnover: pd.Series         # one-way turnover at each rebalance
     weights: pd.DataFrame       # executed weights at each rebalance
+    periods_per_year: int = 252  # bars per year, for annualising (252 daily, 52 weekly, ...)
 
     @property
     def equity(self) -> pd.Series:
         return (1 + self.returns).cumprod()
 
     def summary(self) -> dict:
-        return metrics.summary(self.returns, self.turnover)
+        return metrics.summary(self.returns, self.turnover, self.periods_per_year)
 
 
 def run_backtest(prices: pd.DataFrame, target_weights: pd.DataFrame, rebalance: str | int = "M",
                  cost_bps: float = 5.0, slippage_bps: float = 0.0, execution_lag: int = 1,
                  delisting_return: float = 0.0, dollar_volume: pd.DataFrame | None = None,
                  capital: float = 1e8, impact_coef: float = 1.0,
-                 borrow_bps: float | pd.Series = 0.0) -> BacktestResult:
+                 borrow_bps: float | pd.Series = 0.0, cost_model: CostModel | None = None,
+                 periods_per_year: int = 252) -> BacktestResult:
     """Simulate trading `target_weights` (fractions of NAV, row t decided at close t).
 
     * execution_lag=1 (default): weights decided at close t are traded at close
@@ -79,10 +82,18 @@ def run_backtest(prices: pd.DataFrame, target_weights: pd.DataFrame, rebalance: 
     * Borrow: short positions pay `borrow_bps` per year on their (drifting)
       value, charged daily. Pass a Series for per-asset fees; hard-to-borrow
       names can cost several hundred bps. Assets missing from it pay nothing.
+    * cost_model (optional, see btlab.costs) replaces cost_bps, slippage_bps
+      and dollar_volume: it prices each rebalance's trade per asset, e.g.
+      SpreadImpactCost with a spread and impact calibrated elsewhere. With a
+      cost_model, leave those three at their defaults (anything else raises).
+    * periods_per_year: bars per year (252 for daily). It sets the borrow
+      accrual per bar and the annualisation in result.summary().
     * Assets that are not listed on a rebalance date cannot be bought; a
       delisted position becomes cash. A position inside a price gap (a halt)
       is held unchanged until prices resume.
     """
+    if cost_model is not None and (cost_bps != 5.0 or slippage_bps != 0.0 or dollar_volume is not None):
+        raise ValueError("cost_model replaces cost_bps, slippage_bps and dollar_volume; do not pass them too")
     target_weights = target_weights.reindex(index=prices.index, columns=prices.columns)
     rets = asset_returns(prices, delisting_return)
     listed = prices.notna()
@@ -98,7 +109,7 @@ def run_backtest(prices: pd.DataFrame, target_weights: pd.DataFrame, rebalance: 
     turnover, executed = {}, {}
     w = np.zeros(prices.shape[1])
     bps = (cost_bps + slippage_bps) / 1e4
-    borrow = pd.Series(borrow_bps, index=prices.columns, dtype=float).fillna(0.0).to_numpy() / 1e4 / 252
+    borrow = pd.Series(borrow_bps, index=prices.columns, dtype=float).fillna(0.0).to_numpy() / 1e4 / periods_per_year
     if dollar_volume is not None:
         # ponytail: unknown vol or ADV (first days after listing) means zero impact
         vol = rets.where(listed).rolling(63, min_periods=5).std().fillna(0.0).to_numpy()
@@ -114,7 +125,11 @@ def run_backtest(prices: pd.DataFrame, target_weights: pd.DataFrame, rebalance: 
         trade = np.abs(new - w)
         to = trade.sum()
         turnover[d], executed[d] = to, new
-        costs[i0] += to * bps                               # += keeps that day's borrow fee
+        if cost_model is not None:
+            context = {"assets": prices.columns, "returns": rets.iloc[:i0 + 1]}
+            costs[i0] += float(np.nansum(cost_model.cost(new - w, d, context)))
+        else:
+            costs[i0] += to * bps                           # += keeps that day's borrow fee
         if dollar_volume is not None:
             participation = np.divide(trade * capital, adv[i0], out=np.zeros_like(trade),
                                       where=adv[i0] > 0)
@@ -140,6 +155,7 @@ def run_backtest(prices: pd.DataFrame, target_weights: pd.DataFrame, rebalance: 
         costs=pd.Series(costs, idx, name="costs"),
         turnover=pd.Series(turnover, name="turnover", dtype=float),
         weights=pd.DataFrame(executed, index=prices.columns).T,
+        periods_per_year=periods_per_year,
     )
 
 

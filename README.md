@@ -116,7 +116,7 @@ Factor attribution against the market (equal-weight index) separates the edge fr
 | Long-short momentum | 6.1%/yr | 3.3 | 0.01 | 0.00 |
 | Long-only momentum | 6.8%/yr | 3.0 | 1.03 | 0.82 |
 
-The long-only version earns 16%/yr in raw terms, but most of that is beta.
+The long-only version earns 21%/yr in raw terms, but most of that is beta.
 
 The remaining question is economic. At ~6.4× annual turnover, net Sharpe falls from 1.11
 gross to 0.79 at 30 bps and 0.58 at 50 bps. Borrowing the short leg costs more: a 50 bps/yr
@@ -167,6 +167,41 @@ calibrated for trades below about 10–20% of daily volume, so the far right of 
 
 ![Capacity](https://raw.githubusercontent.com/hossainyousuf751/backtest-lab/main/docs/capacity.png)
 
+## Pluggable costs, risk-based strategies and risk reports (v0.4)
+
+Hooks for plugging in models from elsewhere, all taking plain callables or protocols, so btlab
+still depends only on numpy, scipy and pandas:
+
+- **`run_backtest(..., cost_model=...)`** prices each rebalance's trade per asset.
+  - `FlatBps(cost_bps, slippage_bps)` reproduces the flat-cost arguments exactly.
+  - `SpreadImpactCost(half_spread_bps, impact_coef, adv, vol, capital)` charges half the spread plus
+    square-root impact `coef · σ · sqrt(trade value / ADV)` (Almgren et al. 2005). It accepts a spread
+    and impact calibrated anywhere, for example from an order book. Without volume data it charges the
+    spread only and warns. `SpreadImpactCost.from_dollar_volume` gives the same numbers as the
+    `dollar_volume=` path above.
+- **`periods_per_year`** sets annualisation in `result.summary()` and the borrow accrual, for
+  weekly, hourly or one-second bars.
+- **`CovarianceStrategy(estimator, allocator, window, min_history, every)`** estimates a covariance
+  matrix from trailing returns and allocates with any function (inverse variance, minimum variance,
+  risk parity, HRP).
+  - It recomputes only every `every` trading days, on positions chosen so that
+    `run_backtest(rebalance=every, execution_lag=1)` trades each decision the next day.
+  - That schedule uses only past dates, so the strategy passes `check_lookahead`. A calendar
+    month-end schedule would not, because spotting the last trading day of a month needs tomorrow's date.
+- **`TimeSeriesMomentum(vol_estimator=...)`** takes any vol forecast, such as GARCH or EWMA, in place
+  of the 63-day rolling standard deviation. The default is unchanged.
+- **`risk_report(result, var_fn, alpha)`** runs a VaR forecaster on the strategy's returns and
+  backtests it. It reports exceptions against expected and Kupiec's (1995) proportion-of-failures
+  test.
+
+## Part of quant-stack
+
+backtest-lab is one of five independent libraries linked in
+[quant-stack](https://github.com/hossainyousuf751/quant-stack), where risk-lab's covariance
+estimators and allocators run through `CovarianceStrategy` (study S3), and microstructure-lab's
+order-book measurements become a `SpreadImpactCost` (study S4). backtest-lab installs and tests on
+its own.
+
 ## Roadmap
 
 - [x] **M1** Engine, strategies, look-ahead test, walk-forward, PSR/DSR, bootstrap CIs, four studies
@@ -187,6 +222,7 @@ testing rules, and [CHANGELOG.md](CHANGELOG.md) for what changed between version
 
 ## References
 
+- Almgren, R., Thum, C., Hauptmann, E. & Li, H. (2005). Direct estimation of equity market impact. *Risk* 18(7).
 - Bailey, D. & López de Prado, M. (2012). The Sharpe Ratio Efficient Frontier. *Journal of Risk* 15(2).
 - Bailey, D. & López de Prado, M. (2014). The Deflated Sharpe Ratio. *Journal of Portfolio Management* 40(5).
 - Bailey, D., Borwein, J., López de Prado, M. & Zhu, Q. (2017). The Probability of Backtest Overfitting. *Journal of Computational Finance* 20(4).
