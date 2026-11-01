@@ -7,7 +7,7 @@ remaining questions are economic: how much survives costs and turnover?
 from _common import DOCS, MOMENTUM_GRID, fmt
 
 from btlab import (
-    CrossSectionalMomentum, check_lookahead, cost_sensitivity, deflated_sharpe, effective_trials,
+    CrossSectionalMomentum, annual_return, check_lookahead, cost_sensitivity, deflated_sharpe, effective_trials,
     factor_attribution, probability_of_backtest_overfitting, run_backtest, sharpe,
     synthetic_market, walk_forward,
 )
@@ -40,7 +40,8 @@ market = prices.pct_change(fill_method=None).mean(axis=1).fillna(0.0).to_frame("
 long_only = run_backtest(prices, CrossSectionalMomentum(long_short=False).weights(prices))
 for label, r in (("long-short", base.returns), ("long-only", long_only.returns)):
     t = factor_attribution(r, market)
-    print(f"{label}: alpha {t.loc['alpha', 'coef']:.1%}/yr (t={t.loc['alpha', 't_stat']:.1f}), "
+    print(f"{label}: raw return {annual_return(r):.1%}/yr, "
+          f"alpha {t.loc['alpha', 'coef']:.1%}/yr (t={t.loc['alpha', 't_stat']:.1f}), "
           f"market beta {t.loc['market', 'coef']:.2f}, R2 {t.attrs['r2']:.2f}")
 print()
 

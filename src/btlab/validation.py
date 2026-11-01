@@ -7,6 +7,7 @@ from itertools import combinations
 
 import numpy as np
 import pandas as pd
+from scipy import stats
 from scipy.cluster.hierarchy import fcluster, linkage
 from scipy.spatial.distance import squareform
 
@@ -158,3 +159,39 @@ def effective_trials(trial_returns: pd.DataFrame, min_corr: float = 0.5) -> int:
     np.fill_diagonal(dist, 0.0)
     tree = linkage(squareform(dist, checks=False), "average")
     return int(fcluster(tree, np.sqrt(0.5 * (1 - min_corr)), "distance").max())
+
+
+def risk_report(result, var_fn=None, alpha: float = 0.01) -> dict:
+    """Run a value-at-risk forecaster on a strategy's returns and backtest it.
+
+    `result` is a BacktestResult or a return Series. var_fn maps the returns
+    (warm-up zeros before the first trade removed) to a DataFrame with a "var"
+    column, or a Series: the one-period VaR at tail probability alpha as a
+    positive loss, row t using only returns before t. risk-lab's var_es_*
+    functions have this contract, but any callable works. The default is
+    historical simulation over the previous 250 periods.
+
+    An exception is a loss larger than the forecast. Kupiec's (1995)
+    proportion-of-failures test asks whether the exception rate is consistent
+    with alpha: a small p-value means the forecaster under- or over-states risk.
+    """
+    r = result.returns if hasattr(result, "returns") else result
+    nz = np.flatnonzero(r.to_numpy() != 0)
+    r = r.iloc[nz[0]:] if len(nz) else r.iloc[:0]
+    if var_fn is None:
+        forecast = -r.rolling(250).quantile(alpha).shift(1)
+    else:
+        forecast = var_fn(r)
+    var = forecast["var"] if isinstance(forecast, pd.DataFrame) else forecast
+    var = var.reindex(r.index)
+    ok = var.notna()
+    hits = (r[ok] < -var[ok]).to_numpy()
+    n, x = int(ok.sum()), int(hits.sum())
+    if n == 0:
+        raise ValueError("no period has both a return and a VaR forecast")
+    p_hat = x / n
+    log_l0 = (n - x) * np.log(1 - alpha) + x * np.log(alpha)
+    log_l1 = (n - x) * np.log(1 - p_hat) + x * np.log(p_hat) if 0 < x < n else 0.0
+    lr = -2 * (log_l0 - log_l1)
+    return {"n": n, "exceptions": x, "expected": alpha * n, "exception_rate": p_hat,
+            "kupiec_lr": float(lr), "kupiec_p": float(stats.chi2.sf(lr, 1)), "var": var}

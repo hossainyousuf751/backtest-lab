@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "btlab"
-version = "0.3.1"
+version = "0.4.0"
 description = "A backtesting framework built around avoiding the common ways backtests lie"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -25,3 +25,5 @@ where = ["src"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+markers = ["slow: README-scale studies (tens of seconds); run with -m slow"]
+addopts = "-m 'not slow'"

@@ -5,6 +5,28 @@ versions follow [semantic versioning](https://semver.org/).
 
 ## Unreleased
 
+## 0.4.0 - 2026-11-01
+
+Hooks for quant-stack. Default results are unchanged; the README numbers are pinned in `tests/test_regression.py`.
+
+### Added
+
+- `btlab.costs`: the `CostModel` protocol, `FlatBps` and `SpreadImpactCost` (half-spread plus square-root
+  impact, with `from_dollar_volume`). Pass one with `run_backtest(..., cost_model=...)`. Combining it with
+  `cost_bps`, `slippage_bps` or `dollar_volume` raises.
+- `run_backtest(..., periods_per_year=252)` and `BacktestResult.periods_per_year`, used by `summary()`
+  and the borrow accrual.
+- `CovarianceStrategy(estimator, allocator, window, min_history, every)`: risk-based allocation from plain
+  callables, recomputed on a causal schedule.
+- `TimeSeriesMomentum(vol_estimator=None)`.
+- `risk_report(result, var_fn=None, alpha=0.01)`: a VaR backtest with Kupiec's test.
+- Example 03 prints the long-only raw return.
+- Regression tests pinning the README numbers. The overfitting and walk-forward studies are marked `slow`.
+
+### Fixed
+
+- README Study 3: long-only momentum earns 21%/yr in raw terms, not 16%. The 16% was Study 2's figure.
+
 ## 0.3.1 - 2026-11-01
 
 Release-process changes only: the library code is identical to 0.3.0.
